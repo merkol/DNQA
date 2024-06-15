@@ -5,10 +5,11 @@ from engine import Trainer
 
 def run(
     cfg: str,
-    is_train: bool = True
+    is_train: bool = True,
+    start_wandb: bool = True,
 ):
     if is_train:
-        runner = Trainer(cfg)
+        runner = Trainer(cfg, start_wandb)
     else:
         raise NotImplementedError("Not implemented tester object yet.")
     runner()
