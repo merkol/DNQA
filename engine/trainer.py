@@ -8,7 +8,7 @@ from tqdm import tqdm
 from torch.utils import data
 from torchvision import transforms
 
-from dncm import DNCM, Encoder
+from dncm import DNCM, Encoder, DeNIM_StyleSwap_to_Canon
 from dataset import UHD_IQA
 
 class Trainer:
@@ -30,7 +30,7 @@ class Trainer:
             self.wandb.define_metric("lr", step_metric="epoch")
         
         self.transform = transforms.Compose([
-            transforms.RandomCrop((968, 968)),
+            transforms.RandomCrop((self.IMAGE_SIZE, self.IMAGE_SIZE)),
             transforms.RandomHorizontalFlip(0.5),
             transforms.RandomVerticalFlip(0.5),
             transforms.RandomRotation(30),
@@ -41,7 +41,7 @@ class Trainer:
         self.image_loader = data.DataLoader(dataset=self.dataset, batch_size=self.BATCH_SIZE, shuffle=self.SHUFFLE)
         self.to_pil = transforms.ToPILImage()
         
-        self.DNCM = DNCM(self.k)
+        self.DNCM = DeNIM_StyleSwap_to_Canon(self.k)
         self.encoder = Encoder((self.sz, self.sz), self.k)
 
         self.optimizer = torch.optim.Adam(
@@ -73,6 +73,7 @@ class Trainer:
         self.DATASET_ROOT = Path(self.cfg["DATASET_ROOT"])
         self.BATCH_SIZE = int(self.cfg["BATCH_SIZE"])
         self.EPOCHS = int(self.cfg["EPOCHS"])
+        self.IMAGE_SIZE = int(self.cfg["IMAGE_SIZE"])
         self.SCHEDULER_STEP = list(self.cfg["SCHEDULER_STEP"])
         self.SCHEDULER_GAMMA = float(self.cfg["SCHEDULER_GAMMA"])
         self.SCHEDULER_T_0 = int(self.cfg["SCHEDULER_T_0"])

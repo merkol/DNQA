@@ -46,7 +46,7 @@ class DeNIM_StyleSwap_to_Canon(nn.Module):
         out = out @ self.out_proj
         out = out + residual_proj
         out = self.silu(out)
-        out = self.global_avg_pool(out.view(bs, self.ch, H, W))
+        out = self.global_avg_pool(out)
         out = out.flatten(start_dim=1)
         out = torch.sigmoid(out)
         return out
