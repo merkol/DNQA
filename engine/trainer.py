@@ -25,10 +25,15 @@ class Trainer:
                 config=self.cfg, 
                 entity=self.ENTITY
             )
+            self.wandb.define_metric("epoch")
+            self.wandb.define_metric("epoch_loss", step_metric="epoch")
+            self.wandb.define_metric("lr", step_metric="epoch")
         
         self.transform = transforms.Compose([
-            transforms.Resize((968, 3840)),
-            # transforms.CenterCrop(968),
+            transforms.RandomCrop((968, 968)),
+            transforms.RandomHorizontalFlip(0.5),
+            transforms.RandomVerticalFlip(0.5),
+            transforms.RandomRotation(30),
             transforms.ToTensor()
         ])
 
@@ -43,7 +48,10 @@ class Trainer:
             list(self.DNCM.parameters()) + list(self.encoder.parameters()),
             lr=self.LR, betas=self.BETAS
         )
-        self.scheduler = torch.optim.lr_scheduler.StepLR(self.optimizer, step_size=self.SCHEDULER_STEP, gamma=self.SCHEDULER_GAMMA)
+        if self.SCHEDULER_TYPE == "step":
+            self.scheduler = torch.optim.lr_scheduler.MultiStepLR(self.optimizer, milestones=self.SCHEDULER_STEP, gamma=0.1)
+        elif self.SCHEDULER_TYPE == "cosine":
+            self.scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(self.optimizer, T_0=self.SCHEDULER_T_0)
 
         self.current_epoch = 0
         if self.INIT_FROM is not None and self.INIT_FROM != "":
@@ -63,13 +71,12 @@ class Trainer:
         self.BETAS = (self.cfg["BETA1"], self.cfg["BETA2"])
         self.NUM_GPU = int(self.cfg["NUM_GPU"])
         self.DATASET_ROOT = Path(self.cfg["DATASET_ROOT"])
-        self.IMG_SIZE = int(self.cfg["IMG_SIZE"])
         self.BATCH_SIZE = int(self.cfg["BATCH_SIZE"])
         self.EPOCHS = int(self.cfg["EPOCHS"])
-        self.LAMBDA = float(self.cfg["LAMBDA"])
-        self.SCHEDULER_STEP = int(self.cfg["SCHEDULER_STEP"])
+        self.SCHEDULER_STEP = list(self.cfg["SCHEDULER_STEP"])
         self.SCHEDULER_GAMMA = float(self.cfg["SCHEDULER_GAMMA"])
-        self.VISUALIZE_STEP = int(self.cfg["VISUALIZE_STEP"])
+        self.SCHEDULER_T_0 = int(self.cfg["SCHEDULER_T_0"])
+        self.SCHEDULER_TYPE = self.cfg["SCHEDULER_TYPE"]
         self.SHUFFLE = bool(self.cfg["SHUFFLE"])
         self.NUM_WORKERS = int(self.cfg["NUM_WORKERS"])
         self.CKPT_DIR = Path(self.cfg["CKPT_DIR"])
@@ -84,13 +91,13 @@ class Trainer:
     def run(self):
         for e in range(self.EPOCHS):
             log.info(f"Epoch {e+1}/{self.EPOCHS}")
+            epoch_loss = 0
             for step, (I, quality) in enumerate(tqdm(self.image_loader, total=len(self.image_loader))):
                 self.optimizer.zero_grad()
 
                 I = I.float().cuda()
                 quality = quality.float().cuda()
                 
-                # from Figure 4 in https://arxiv.org/pdf/2303.13511.pdf
                 d = self.encoder(I)
                 Z = self.DNCM(I, d)
                 Z = Z.view(-1)
@@ -98,14 +105,23 @@ class Trainer:
                 
                 loss.backward()
                 self.optimizer.step()
+                epoch_loss += loss.item()
                 if self.start_wandb:
                     self.wandb.log({
                         "loss": loss.item(),
                     }, commit=True)
-                # if step % self.VISUALIZE_STEP == 0 and step != 0:
-                #     self.wandb.log({})
-            self.scheduler.step()
+                self.scheduler.step(e + step / len(self.image_loader))
+                
             self.do_checkpoint()
+            if self.start_wandb:
+                self.wandb.log({
+                    "epoch": e,
+                    "lr": self.optimizer.param_groups[0]["lr"],
+                    "epoch_loss": epoch_loss / len(self.image_loader)
+                }, commit=True)
+            
+        if self.start_wandb:
+            self.upload_checkpoint()
 
     def check_and_use_multi_gpu(self):
         if torch.cuda.device_count() > 1 and self.NUM_GPU > 1:
@@ -126,6 +142,9 @@ class Trainer:
             'optimizer': self.optimizer.state_dict()
         }
         torch.save(checkpoint, str(self.CKPT_DIR / "latest_ckpt.pth"))
+        
+    def upload_checkpoint(self):
+        self.wandb.save(str(self.CKPT_DIR / "latest_ckpt.pth"))
     
     def load_checkpoints(self, ckpt_path):
         checkpoints = torch.load(ckpt_path)

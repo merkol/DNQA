@@ -20,6 +20,7 @@ class DNCM(nn.Module):
         out = x @ self.P @ T.view(bs, self.k, self.k) @ self.Q
         out = self.global_avg_pool(out)
         out = out.flatten(start_dim=1)
+        out = torch.sigmoid(out)
         return out
     
 
@@ -27,8 +28,8 @@ class Encoder(nn.Module):
     def __init__(self, sz, k) -> None:
         super().__init__()
         self.normalizer = Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-        self.backbone = torch.hub.load('facebookresearch/dinov2', 'dinov2_vits14_lc')
-        self.D = nn.Linear(in_features=1000, out_features=k*k)
+        self.backbone = torch.hub.load('facebookresearch/dinov2', 'dinov2_vitb14')
+        self.D = nn.Linear(in_features=768, out_features=k*k)
         self.sz = sz
         
     def forward(self, I):
