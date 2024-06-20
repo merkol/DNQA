@@ -1,4 +1,5 @@
 import torch
+import timm
 from torch import nn
 from kornia.geometry.transform import resize
 from kornia.enhance.normalize import Normalize
@@ -20,7 +21,7 @@ class DNCM(nn.Module):
         out = x @ self.P @ T.view(bs, self.k, self.k) @ self.Q
         out = self.global_avg_pool(out)
         out = out.flatten(start_dim=1)
-        out = torch.sigmoid(out)
+        # out = torch.sigmoid(out)
         return out
     
 class DeNIM_StyleSwap_to_Canon(nn.Module):
@@ -48,21 +49,21 @@ class DeNIM_StyleSwap_to_Canon(nn.Module):
         out = self.silu(out)
         out = self.global_avg_pool(out)
         out = out.flatten(start_dim=1)
-        out = torch.sigmoid(out)
+        # out = torch.sigmoid(out)
         return out
 
 class Encoder(nn.Module):
-    def __init__(self, sz, k) -> None:
+    def __init__(self, sz, k, backbone_arch) -> None:
         super().__init__()
         self.normalizer = Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-        self.backbone = torch.hub.load('facebookresearch/dinov2', 'dinov2_vitb14')
-        self.D = nn.Linear(in_features=768, out_features=k*k)
+        self.backbone = timm.create_model(backbone_arch, pretrained=True)
+        self.D = nn.Linear(in_features=1000, out_features=k*k)
         self.sz = sz
         
     def forward(self, I):
         I_theta = resize(I, self.sz, interpolation='bilinear')
-        with torch.no_grad():
-            out = self.backbone(self.normalizer(I_theta))
+        # with torch.no_grad():
+        out = self.backbone(self.normalizer(I_theta))
         d = self.D(out)
         return d
     

@@ -41,8 +41,12 @@ class Trainer:
         self.image_loader = data.DataLoader(dataset=self.dataset, batch_size=self.BATCH_SIZE, shuffle=self.SHUFFLE)
         self.to_pil = transforms.ToPILImage()
         
-        self.DNCM = DeNIM_StyleSwap_to_Canon(self.k)
-        self.encoder = Encoder((self.sz, self.sz), self.k)
+        if self.ARCH_TYPE == "style_swap":
+            self.DNCM = DeNIM_StyleSwap_to_Canon(self.k)
+        elif self.ARCH_TYPE == "dncm":
+            self.DNCM = DNCM(self.k)
+            
+        self.encoder = Encoder((self.sz, self.sz), self.k, self.BACKBONE_ARCH)
 
         self.optimizer = torch.optim.Adam(
             list(self.DNCM.parameters()) + list(self.encoder.parameters()),
@@ -74,6 +78,8 @@ class Trainer:
         self.BATCH_SIZE = int(self.cfg["BATCH_SIZE"])
         self.EPOCHS = int(self.cfg["EPOCHS"])
         self.IMAGE_SIZE = int(self.cfg["IMAGE_SIZE"])
+        self.ARCH_TYPE = self.cfg["ARCH_TYPE"]
+        self.BACKBONE_ARCH = self.cfg["BACKBONE_ARCH"]
         self.SCHEDULER_STEP = list(self.cfg["SCHEDULER_STEP"])
         self.SCHEDULER_GAMMA = float(self.cfg["SCHEDULER_GAMMA"])
         self.SCHEDULER_T_0 = int(self.cfg["SCHEDULER_T_0"])
@@ -111,7 +117,10 @@ class Trainer:
                     self.wandb.log({
                         "loss": loss.item(),
                     }, commit=True)
-                self.scheduler.step(e + step / len(self.image_loader))
+                if self.SCHEDULER_TYPE == "step":
+                    self.scheduler.step()
+                elif self.SCHEDULER_TYPE == "cosine":
+                    self.scheduler.step(e + step / len(self.image_loader))
                 
             self.do_checkpoint()
             if self.start_wandb:
