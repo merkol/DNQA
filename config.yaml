@@ -1,19 +1,20 @@
-k: 16
-sz: 224
-LR: 1e-4
+k: 32
+sz: 384
+LR: 1e-6
 BETA1: 0.9
 BETA2: 0.999
 NUM_GPU: 1
 DATASET_ROOT: "/home/vgl/Research/DNQA/challenge"
-BATCH_SIZE: 8
-EPOCHS: 50
+BATCH_SIZE: 64
+EPOCHS: 300
 IMAGE_SIZE: 512
-ARCH_TYPE : "style_swap"
-BACKBONE_ARCH: "vit_base_patch8_224"
+ARCH_TYPE : "dncm"
+BACKBONE_ARCH: "vit_large_patch16_384"
 SCHEDULER_STEP: [20, 28]
 SCHEDULER_GAMMA: 0.1
-SCHEDULER_TYPE: "cosine"
+SCHEDULER_TYPE: "cosine_restart"
 SCHEDULER_T_0: 22
+SCHEDULER_T_MAX : 50
 SHUFFLE: True
 NUM_WORKERS: 1
 CKPT_DIR: "./ckpts"

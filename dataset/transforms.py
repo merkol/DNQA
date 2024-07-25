@@ -8,7 +8,9 @@ from PIL import Image
 
 class RandomCropThreeInstances:
     @staticmethod
-    def get_params(img: torch.Tensor, output_size: Tuple[int, int]) -> Tuple[int, int, int, int]:
+    def get_params(
+        img: torch.Tensor, output_size: Tuple[int, int]
+    ) -> Tuple[int, int, int, int]:
         """Get parameters for ``crop`` for a random crop.
 
         Args:
@@ -23,7 +25,9 @@ class RandomCropThreeInstances:
 
         if h + 1 < th or w + 1 < tw:
             raise ValueError(
-                "Required crop size {} is larger then input image size {}".format((th, tw), (h, w))
+                "Required crop size {} is larger then input image size {}".format(
+                    (th, tw), (h, w)
+                )
             )
 
         if w == tw and h == th:
@@ -33,12 +37,16 @@ class RandomCropThreeInstances:
         j = torch.randint(0, w - tw + 1, size=(1,)).item()
         return i, j, th, tw
 
-    def __init__(self, size, padding=None, pad_if_needed=False, fill=0, padding_mode="constant"):
+    def __init__(
+        self, size, padding=None, pad_if_needed=False, fill=0, padding_mode="constant"
+    ):
         super().__init__()
 
-        self.size = tuple(self._setup_size(
-            size, error_msg="Please provide only two dimensions (h, w) for size."
-        ))
+        self.size = tuple(
+            self._setup_size(
+                size, error_msg="Please provide only two dimensions (h, w) for size."
+            )
+        )
 
         self.padding = padding
         self.pad_if_needed = pad_if_needed
@@ -67,10 +75,16 @@ class RandomCropThreeInstances:
 
         i, j, h, w = self.get_params(img1, self.size)
 
-        return TF.crop(img1, i, j, h, w), TF.crop(img2, i, j, h, w), TF.crop(img3, i, j, h, w)
+        return (
+            TF.crop(img1, i, j, h, w),
+            TF.crop(img2, i, j, h, w),
+            TF.crop(img3, i, j, h, w),
+        )
 
     def __repr__(self):
-        return self.__class__.__name__ + "(size={0}, padding={1})".format(self.size, self.padding)
+        return self.__class__.__name__ + "(size={0}, padding={1})".format(
+            self.size, self.padding
+        )
 
     def _setup_size(self, size, error_msg):
         if isinstance(size, numbers.Number):
@@ -117,12 +131,16 @@ class NormalizeThreeInstances(torch.nn.Module):
         Returns:
             Tensor: Normalized Tensor image.
         """
-        return TF.normalize(tensor1, self.mean, self.std, self.inplace), \
-            TF.normalize(tensor2, self.mean, self.std, self.inplace), \
-            TF.normalize(tensor3, self.mean, self.std, self.inplace)
+        return (
+            TF.normalize(tensor1, self.mean, self.std, self.inplace),
+            TF.normalize(tensor2, self.mean, self.std, self.inplace),
+            TF.normalize(tensor3, self.mean, self.std, self.inplace),
+        )
 
     def __repr__(self):
-        return self.__class__.__name__ + '(mean={0}, std={1})'.format(self.mean, self.std)
+        return self.__class__.__name__ + "(mean={0}, std={1})".format(
+            self.mean, self.std
+        )
 
 
 class ResizeThreeInstances(torch.nn.Module):
@@ -136,21 +154,25 @@ class ResizeThreeInstances(torch.nn.Module):
         self.interpolation = interpolation
 
     def forward(self, img1, img2, img3):
-        return TF.resize(img1, self.size, self.interpolation), \
-            TF.resize(img2, self.size, self.interpolation), \
-            TF.resize(img3, self.size, self.interpolation)
+        return (
+            TF.resize(img1, self.size, self.interpolation),
+            TF.resize(img2, self.size, self.interpolation),
+            TF.resize(img3, self.size, self.interpolation),
+        )
 
     def __repr__(self):
         _pil_interpolation_to_str = {
-            Image.NEAREST: 'PIL.Image.NEAREST',
-            Image.BILINEAR: 'PIL.Image.BILINEAR',
-            Image.BICUBIC: 'PIL.Image.BICUBIC',
-            Image.LANCZOS: 'PIL.Image.LANCZOS',
-            Image.HAMMING: 'PIL.Image.HAMMING',
-            Image.BOX: 'PIL.Image.BOX',
+            Image.NEAREST: "PIL.Image.NEAREST",
+            Image.BILINEAR: "PIL.Image.BILINEAR",
+            Image.BICUBIC: "PIL.Image.BICUBIC",
+            Image.LANCZOS: "PIL.Image.LANCZOS",
+            Image.HAMMING: "PIL.Image.HAMMING",
+            Image.BOX: "PIL.Image.BOX",
         }
         interpolate_str = _pil_interpolation_to_str[self.interpolation]
-        return self.__class__.__name__ + '(size={0}, interpolation={1})'.format(self.size, interpolate_str)
+        return self.__class__.__name__ + "(size={0}, interpolation={1})".format(
+            self.size, interpolate_str
+        )
 
 
 class RandomHorizontalFlipThreeInstances:
@@ -163,7 +185,7 @@ class RandomHorizontalFlipThreeInstances:
         return img1, img2, img3
 
     def __repr__(self):
-        return self.__class__.__name__ + '(p={})'.format(self.p)
+        return self.__class__.__name__ + "(p={})".format(self.p)
 
 
 class ToTensor:
@@ -171,7 +193,7 @@ class ToTensor:
         return TF.to_tensor(img1), TF.to_tensor(img2), TF.to_tensor(img3)
 
     def __repr__(self):
-        return self.__class__.__name__ + '()'
+        return self.__class__.__name__ + "()"
 
 
 class Compose:
@@ -184,9 +206,9 @@ class Compose:
         return img1, img2, img3
 
     def __repr__(self):
-        format_string = self.__class__.__name__ + '('
+        format_string = self.__class__.__name__ + "("
         for t in self.transforms:
-            format_string += '\n'
-            format_string += '    {0}'.format(t)
-        format_string += '\n)'
+            format_string += "\n"
+            format_string += "    {0}".format(t)
+        format_string += "\n)"
         return format_string

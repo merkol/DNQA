@@ -1,6 +1,6 @@
 import fire
 
-from engine import Trainer
+from engine import Trainer, Tester
 
 
 def run(
@@ -11,7 +11,14 @@ def run(
     if is_train:
         runner = Trainer(cfg, start_wandb)
     else:
-        raise NotImplementedError("Not implemented tester object yet.")
+        runner = Tester(
+            ckpt="ckpts/latest_ckpt.pth",
+            patch_mode=False,
+            k=32,
+            sz=384,
+            data_path="./challenge/validation",
+            denim_type="dncm",
+        )
     runner()
 
 
